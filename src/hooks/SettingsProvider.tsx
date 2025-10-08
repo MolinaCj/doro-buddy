@@ -42,7 +42,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     spotify_enabled: false,
   })
 
-  // Fetch user settings (completely non-blocking)
+  // Fetch user settings (completely non-blocking, no timeouts)
   const fetchSettings = async () => {
     if (!user) {
       setLoading(false)
@@ -60,42 +60,37 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings(defaultSettings)
     setLoading(false)
 
-    // Then try to fetch real settings in the background
-    try {
-      // Check if user is properly authenticated by getting current session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) {
-        console.log('No valid session found, using default settings')
-        return
-      }
-
-      // Use a shorter timeout and don't block the UI
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Settings fetch timeout')), 10000)
-      )
-
-      const response = await Promise.race([
-        fetch('/api/settings'),
-        timeoutPromise
-      ]) as Response
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('User not authenticated, using default settings')
+    // Then try to fetch real settings in the background with NO timeout
+    setTimeout(async () => {
+      try {
+        // Check if user is properly authenticated by getting current session
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) {
+          console.log('No valid session found, using default settings')
           return
         }
-        console.log('Settings API error, using default settings')
-        return
-      }
 
-      const data = await response.json()
-      console.log('Settings fetched successfully:', data)
-      setSettings(data)
-      
-    } catch (err) {
-      console.log('Settings fetch failed, using default settings:', err instanceof Error ? err.message : 'Unknown error')
-      // Don't set error - we already have default settings
-    }
+        // No timeout - let it take as long as it needs
+        const response = await fetch('/api/settings')
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log('User not authenticated, using default settings')
+            return
+          }
+          console.log('Settings API error, using default settings')
+          return
+        }
+
+        const data = await response.json()
+        console.log('Settings fetched successfully:', data)
+        setSettings(data)
+        
+      } catch (err) {
+        console.log('Settings fetch failed, using default settings:', err instanceof Error ? err.message : 'Unknown error')
+        // Don't set error - we already have default settings
+      }
+    }, 1000) // Small delay to ensure UI renders first
   }
 
   // Update settings
