@@ -26,6 +26,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   // Default settings to use when API is unavailable
   const getDefaultSettings = (): UserSettings => ({
+    id: 'default',
+    user_id: user?.id || 'default',
     work_duration: 1500,
     short_break_duration: 300,
     long_break_duration: 900,
@@ -40,6 +42,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     music_volume: 0.5,
     ambient_volume: 0.3,
     spotify_enabled: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   })
 
   // Fetch user settings (completely non-blocking)
