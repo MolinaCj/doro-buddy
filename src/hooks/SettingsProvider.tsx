@@ -6,7 +6,7 @@ import { UserSettings, UpdateSettingsRequest } from '@/types/api'
 import { useAuth } from '@/hooks/useAuth'
 
 interface SettingsContextType {
-  settings: UserSettings | null
+  settings: Partial<UserSettings> | null
   loading: boolean
   error: Error | null
   updateSettings: (updates: UpdateSettingsRequest) => Promise<UserSettings>
@@ -18,16 +18,14 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const [settings, setSettings] = useState<UserSettings | null>(null)
+  const [settings, setSettings] = useState<Partial<UserSettings> | null>(null)
   const [loading, setLoading] = useState(false) // Start as false - don't block UI
   const [error, setError] = useState<Error | null>(null)
 
   const supabase = createBrowserClient()
 
   // Default settings to use when API is unavailable
-  const getDefaultSettings = (): UserSettings => ({
-    id: 'default',
-    user_id: user?.id || 'default',
+  const getDefaultSettings = (): Partial<UserSettings> => ({
     work_duration: 1500,
     short_break_duration: 300,
     long_break_duration: 900,
@@ -42,8 +40,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     music_volume: 0.5,
     ambient_volume: 0.3,
     spotify_enabled: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
   })
 
   // Fetch user settings (completely non-blocking)
