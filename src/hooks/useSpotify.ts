@@ -38,20 +38,63 @@ export function useSpotify() {
   useEffect(() => {
     if (user) {
       checkSpotifyConnection()
+    } else {
+      setState(prev => ({
+        ...prev,
+        isConnected: false,
+        playback: null,
+        deviceId: null,
+        player: null,
+      }))
     }
   }, [user])
+
+  // Re-check connection periodically
+  useEffect(() => {
+    if (user && state.isConnected) {
+      const interval = setInterval(() => {
+        checkSpotifyConnection()
+      }, 30000) // Check every 30 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [user, state.isConnected])
 
   const checkSpotifyConnection = async () => {
     try {
       const response = await fetch('/api/spotify/status')
       const data = await response.json()
       
+      const wasConnected = state.isConnected
+      const isNowConnected = data.connected || false
+      
       setState(prev => ({
         ...prev,
-        isConnected: data.connected || false,
+        isConnected: isNowConnected,
       }))
+
+      // If connection was lost, clean up player
+      if (wasConnected && !isNowConnected) {
+        if (state.player) {
+          state.player.disconnect()
+        }
+        setState(prev => ({
+          ...prev,
+          playback: null,
+          deviceId: null,
+          player: null,
+        }))
+      }
     } catch (error) {
       console.error('Failed to check Spotify connection:', error)
+      // On error, assume disconnected
+      setState(prev => ({
+        ...prev,
+        isConnected: false,
+        playback: null,
+        deviceId: null,
+        player: null,
+      }))
     }
   }
 
@@ -62,10 +105,24 @@ export function useSpotify() {
     try {
       // Get auth URL
       const response = await fetch('/api/spotify/auth')
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to get auth URL')
+      }
+      
       const { auth_url } = await response.json()
 
+      if (!auth_url) {
+        throw new Error('No auth URL received')
+      }
+
       // Open popup window
-      const popup = window.open(auth_url, 'spotify-auth', 'width=600,height=600')
+      const popup = window.open(auth_url, 'spotify-auth', 'width=600,height=600,scrollbars=yes,resizable=yes')
+      
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.')
+      }
       
       // Listen for callback
       const handleCallback = (event: MessageEvent) => {
@@ -75,12 +132,17 @@ export function useSpotify() {
           setState(prev => ({ ...prev, isConnected: true, loading: false }))
           popup?.close()
           window.removeEventListener('message', handleCallback)
+          clearInterval(checkClosed)
           
           // Initialize player after connection
-          initializePlayer()
+          setTimeout(() => initializePlayer(), 1000)
         } else if (event.data.type === 'SPOTIFY_AUTH_ERROR') {
           setState(prev => ({ ...prev, loading: false }))
           console.error('Spotify auth error:', event.data.error)
+          popup?.close()
+          window.removeEventListener('message', handleCallback)
+          clearInterval(checkClosed)
+          throw new Error(event.data.error || 'Authentication failed')
         }
       }
 

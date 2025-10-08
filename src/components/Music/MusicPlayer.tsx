@@ -165,6 +165,8 @@ export default function MusicPlayer({
     } catch (error) {
       console.error('Failed to connect to Spotify:', error);
       setShowSpotifyConnect(false);
+      // Show error to user
+      alert(`Failed to connect to Spotify: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

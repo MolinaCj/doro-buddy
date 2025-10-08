@@ -127,6 +127,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       setHasChanges(true);
     } catch (error) {
       console.error('Failed to connect to Spotify:', error);
+      alert(`Failed to connect to Spotify: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
