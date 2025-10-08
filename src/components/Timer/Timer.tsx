@@ -42,15 +42,22 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
 
   // Get duration for current mode
   const getDuration = useCallback((mode: TimerMode): number => {
-    if (!settings) return mode === 'work' ? 1500 : mode === 'shortBreak' ? 300 : 1800
+    // Use default durations if settings are not available
+    const defaultDurations = {
+      work: 1500,
+      shortBreak: 300,
+      longBreak: 900
+    }
+    
+    if (!settings) return defaultDurations[mode] || 1500
     
     switch (mode) {
       case 'work':
-        return settings.work_duration
+        return settings.work_duration || 1500
       case 'shortBreak':
-        return settings.short_break_duration
+        return settings.short_break_duration || 300
       case 'longBreak':
-        return settings.long_break_duration
+        return settings.long_break_duration || 900
       default:
         return 1500
     }
@@ -128,9 +135,9 @@ const switchMode = useCallback(
     // Play completion sound
     if (settings) {
       const soundId = currentMode === 'work' 
-        ? settings.notification_sound 
-        : settings.break_sound
-      playSound(soundId, settings.notification_volume)
+        ? settings.notification_sound || 'ding'
+        : settings.break_sound || 'gong'
+      playSound(soundId, settings.notification_volume || 0.5)
     }
 
     // Show notification based on current mode
@@ -331,8 +338,8 @@ const switchMode = useCallback(
   const sessionsUntilLongBreak = settings?.sessions_until_long_break || 4
   const currentCyclePosition = state.sessionsCompleted % sessionsUntilLongBreak
 
-  // Show loading state only if settings are loading (audio is non-blocking)
-  if (settingsLoading) {
+  // Show loading state only if settings are loading and we don't have default settings
+  if (settingsLoading && !settings) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
