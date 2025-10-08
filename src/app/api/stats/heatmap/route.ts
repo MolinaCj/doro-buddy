@@ -4,8 +4,19 @@ import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check environment variables first
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('Missing Supabase environment variables');
+      return NextResponse.json({ error: 'Service configuration error' }, { status: 503 });
+    }
+
     const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      console.error('Auth error:', authError);
+      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+    }
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
