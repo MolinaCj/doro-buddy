@@ -26,9 +26,6 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
   const { settings, loading: settingsLoading } = useSettings()
   const { playSound, loading: audioLoading } = useAudio()
   
-  // Mobile detection for optimizations
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  
 
   // Timer state
   const [state, setState] = useState<TimerState>({
@@ -75,13 +72,13 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
           const newDuration = (() => {
             switch (prev.mode) {
               case 'work':
-                return settings.work_duration || 1500
+                return settings.work_duration
               case 'shortBreak':
-                return settings.short_break_duration || 300
+                return settings.short_break_duration
               case 'longBreak':
-                return settings.long_break_duration || 900
+                return settings.long_break_duration
               default:
-                return settings.work_duration || 1500
+                return settings.work_duration
             }
           })()
           
@@ -94,18 +91,6 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
       })
     }
   }, [settings])
-
-  // On mobile, ensure timer is always visible even without settings
-  useEffect(() => {
-    if (isMobile && !settings && state.timeRemaining === 0) {
-      // Initialize with default work duration on mobile if no settings
-      setState(prev => ({
-        ...prev,
-        timeRemaining: 1500, // 25 minutes default
-        mode: 'work'
-      }))
-    }
-  }, [settings, state.timeRemaining, isMobile])
 
 
 
@@ -354,8 +339,7 @@ const switchMode = useCallback(
   const currentCyclePosition = state.sessionsCompleted % sessionsUntilLongBreak
 
   // Show loading state only if settings are loading and we don't have default settings
-  // On mobile, be even more aggressive about showing the timer
-  if (settingsLoading && !settings && !isMobile) {
+  if (settingsLoading && !settings) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>

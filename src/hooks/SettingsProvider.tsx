@@ -42,7 +42,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     spotify_enabled: false,
   })
 
-  // Fetch user settings (completely non-blocking with mobile optimizations)
+  // Fetch user settings (completely non-blocking)
   const fetchSettings = async () => {
     if (!user) {
       setLoading(false)
@@ -60,50 +60,42 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings(defaultSettings)
     setLoading(false)
 
-    // For mobile devices, use even more aggressive caching and shorter timeouts
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    
-    // On mobile, delay the background fetch to prioritize UI rendering
-    const fetchDelay = isMobile ? 2000 : 500
-
-    setTimeout(async () => {
-      try {
-        // Check if user is properly authenticated by getting current session
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.user) {
-          console.log('No valid session found, using default settings')
-          return
-        }
-
-        // Use shorter timeout for mobile
-        const timeoutDuration = isMobile ? 5000 : 10000
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Settings fetch timeout')), timeoutDuration)
-        )
-
-        const response = await Promise.race([
-          fetch('/api/settings'),
-          timeoutPromise
-        ]) as Response
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            console.log('User not authenticated, using default settings')
-            return
-          }
-          console.log('Settings API error, using default settings')
-          return
-        }
-
-        const data = await response.json()
-        console.log('Settings fetched successfully:', data)
-        setSettings(data)
-        
-      } catch (err) {
-        console.log('Settings fetch failed, using default settings:', err instanceof Error ? err.message : 'Unknown error')
-        // Don't set error - we already have default settings
+    // Then try to fetch real settings in the background
+    try {
+      // Check if user is properly authenticated by getting current session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
+        console.log('No valid session found, using default settings')
+        return
       }
-    }, fetchDelay)
+
+      // Use a shorter timeout and don't block the UI
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Settings fetch timeout')), 10000)
+      )
+
+      const response = await Promise.race([
+        fetch('/api/settings'),
+        timeoutPromise
+      ]) as Response
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('User not authenticated, using default settings')
+          return
+        }
+        console.log('Settings API error, using default settings')
+        return
+      }
+
+      const data = await response.json()
+      console.log('Settings fetched successfully:', data)
+      setSettings(data)
+      
+    } catch (err) {
+      console.log('Settings fetch failed, using default settings:', err instanceof Error ? err.message : 'Unknown error')
+      // Don't set error - we already have default settings
+    }
   }
 
   // Update settings
