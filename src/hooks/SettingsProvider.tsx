@@ -41,10 +41,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
       
-      // Add timeout for mobile devices
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Settings fetch timeout')), 5000)
-      )
+        // Add timeout for slow networks (increased from 5s to 15s)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Settings fetch timeout')), 15000)
+        )
       
       // Check if user is properly authenticated by getting current session
       const { data: { session } } = await supabase.auth.getSession()
@@ -73,15 +73,37 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
       console.log('Settings fetched in SettingsProvider:', data)
       setSettings(data)
-    } catch (err) {
-      console.error('Error fetching settings:', err)
-      // Don't set error for authentication issues
-      if (err instanceof Error && !err.message.includes('Failed to fetch settings')) {
-        setError(err as Error)
+      } catch (err) {
+        console.error('Error fetching settings:', err)
+        // Don't set error for authentication issues or timeouts
+        if (err instanceof Error && 
+            !err.message.includes('Failed to fetch settings') && 
+            !err.message.includes('Settings fetch timeout')) {
+          setError(err as Error)
+        }
+        // For timeout or fetch errors, use default settings
+        if (err instanceof Error && err.message.includes('Settings fetch timeout')) {
+          console.log('Settings fetch timed out, using default settings')
+          setSettings({
+            work_duration: 1500,
+            short_break_duration: 300,
+            long_break_duration: 900,
+            sessions_until_long_break: 4,
+            auto_start_breaks: false,
+            auto_start_pomodoros: false,
+            theme: 'system',
+            notification_sound: 'ding',
+            break_sound: 'gong',
+            master_volume: 0.5,
+            notification_volume: 0.5,
+            music_volume: 0.5,
+            ambient_volume: 0.3,
+            spotify_enabled: false,
+          })
+        }
+      } finally {
+        setLoading(false)
       }
-    } finally {
-      setLoading(false)
-    }
   }
 
   // Update settings

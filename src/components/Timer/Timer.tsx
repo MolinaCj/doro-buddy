@@ -196,11 +196,14 @@ const switchMode = useCallback(
           intervalRef.current = null
         }
         setState(prev => ({ ...prev, timeRemaining: 0, isActive: false }))
-        handleTimerComplete()
+        // Use setTimeout to ensure state update completes before calling handleTimerComplete
+        setTimeout(() => {
+          handleTimerComplete()
+        }, 100)
       } else {
         setState(prev => ({ ...prev, timeRemaining: remaining }))
       }
-    }, 100)
+    }, 1000)
 
     return () => {
       if (intervalRef.current) {
