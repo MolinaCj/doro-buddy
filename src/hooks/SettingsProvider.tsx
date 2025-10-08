@@ -24,7 +24,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const supabase = createBrowserClient()
 
-  // Fetch user settings (with caching and mobile optimization)
+  // Default settings to use when API is unavailable
+  const getDefaultSettings = (): UserSettings => ({
+    work_duration: 1500,
+    short_break_duration: 300,
+    long_break_duration: 900,
+    sessions_until_long_break: 4,
+    auto_start_breaks: false,
+    auto_start_pomodoros: false,
+    theme: 'system',
+    notification_sound: 'ding',
+    break_sound: 'gong',
+    master_volume: 0.5,
+    notification_volume: 0.5,
+    music_volume: 0.5,
+    ambient_volume: 0.3,
+    spotify_enabled: false,
+  })
+
+  // Fetch user settings (completely non-blocking)
   const fetchSettings = async () => {
     if (!user) {
       setLoading(false)
@@ -37,23 +55,24 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Start with default settings immediately to prevent loading state
+    const defaultSettings = getDefaultSettings()
+    setSettings(defaultSettings)
+    setLoading(false)
+
+    // Then try to fetch real settings in the background
     try {
-      setLoading(true)
-      setError(null)
-      
-      // Add timeout for mobile devices
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Settings fetch timeout')), 5000)
-      )
-      
       // Check if user is properly authenticated by getting current session
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
-        console.log('No valid session found, skipping settings fetch')
-        setLoading(false)
-        setSettings(null)
+        console.log('No valid session found, using default settings')
         return
       }
+
+      // Use a shorter timeout and don't block the UI
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Settings fetch timeout')), 10000)
+      )
 
       const response = await Promise.race([
         fetch('/api/settings'),
@@ -62,25 +81,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       
       if (!response.ok) {
         if (response.status === 401) {
-          console.log('User not authenticated, skipping settings fetch')
-          setLoading(false)
-          setSettings(null)
+          console.log('User not authenticated, using default settings')
           return
         }
-        throw new Error('Failed to fetch settings')
+        console.log('Settings API error, using default settings')
+        return
       }
 
       const data = await response.json()
-      console.log('Settings fetched in SettingsProvider:', data)
+      console.log('Settings fetched successfully:', data)
       setSettings(data)
+      
     } catch (err) {
-      console.error('Error fetching settings:', err)
-      // Don't set error for authentication issues
-      if (err instanceof Error && !err.message.includes('Failed to fetch settings')) {
-        setError(err as Error)
-      }
-    } finally {
-      setLoading(false)
+      console.log('Settings fetch failed, using default settings:', err instanceof Error ? err.message : 'Unknown error')
+      // Don't set error - we already have default settings
     }
   }
 

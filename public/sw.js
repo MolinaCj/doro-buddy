@@ -245,7 +245,12 @@ async function handleStaticAsset(request) {
     // Try network with better error handling
     const networkResponse = await fetch(request).catch(fetchError => {
       console.warn('[SW] Network fetch failed for:', request.url, fetchError);
-      throw fetchError;
+      // Return a basic 404 response instead of throwing
+      return new Response('Not Found', { 
+        status: 404, 
+        statusText: 'Not Found',
+        headers: { 'Content-Type': 'text/plain' }
+      });
     });
     
     // Only cache successful, complete responses (not partial 206 responses)
