@@ -46,11 +46,11 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
     
     switch (mode) {
       case 'work':
-        return settings.work_duration
+        return settings.work_duration ?? 1500
       case 'shortBreak':
-        return settings.short_break_duration
+        return settings.short_break_duration ?? 300
       case 'longBreak':
-        return settings.long_break_duration
+        return settings.long_break_duration ?? 1800
       default:
         return 1500
     }
@@ -65,13 +65,13 @@ export default function Timer({ selectedTaskId, onSessionComplete, onOpenSetting
           const newDuration = (() => {
             switch (prev.mode) {
               case 'work':
-                return settings.work_duration
+                return settings.work_duration ?? 1500
               case 'shortBreak':
-                return settings.short_break_duration
+                return settings.short_break_duration ?? 300
               case 'longBreak':
-                return settings.long_break_duration
+                return settings.long_break_duration ?? 1800
               default:
-                return settings.work_duration
+                return settings.work_duration ?? 1500
             }
           })()
           
@@ -103,8 +103,8 @@ const switchMode = useCallback(
 
     if (settings) {
       const shouldAutoStart =
-        (newMode !== 'work' && settings.auto_start_breaks) ||
-        (newMode === 'work' && settings.auto_start_pomodoros)
+        (newMode !== 'work' && (settings.auto_start_breaks ?? false)) ||
+        (newMode === 'work' && (settings.auto_start_pomodoros ?? false))
 
       if (shouldAutoStart) {
         setTimeout(() => {
@@ -128,9 +128,9 @@ const switchMode = useCallback(
     // Play completion sound
     if (settings) {
       const soundId = currentMode === 'work' 
-        ? settings.notification_sound 
-        : settings.break_sound
-      playSound(soundId, settings.notification_volume)
+        ? (settings.notification_sound ?? 'ding')
+        : (settings.break_sound ?? 'gong')
+      playSound(soundId, settings.notification_volume ?? 0.5)
     }
 
     // Show notification based on current mode
