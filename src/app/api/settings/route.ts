@@ -7,7 +7,8 @@ import type { Database } from '@/types/supabase'
 // GET /api/settings - Fetch user settings
 export async function GET(request: Request) {
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
 
     // Get authenticated user
     const {
@@ -85,7 +86,8 @@ export async function GET(request: Request) {
 // PUT /api/settings - Update user settings
 export async function PUT(request: Request) {
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
 
     // Get authenticated user
     const {
